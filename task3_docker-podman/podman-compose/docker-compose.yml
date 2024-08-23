@@ -1,0 +1,64 @@
+version: '3.7'
+
+services:
+  nginx:
+    container_name: nginx
+    hostname: nginx
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+    depends_on:
+      - wordpress
+      - joomla
+  db:
+    container_name: db
+    hostname: db
+    image: mysql:8.0.17
+    environment:
+      - MYSQL_USER=myuser
+      - MYSQL_PASSWORD=test
+      - MYSQL_ROOT_PASSWORD=test0
+    entrypoint: |
+      sh -c "
+        echo 'CREATE DATABASE IF NOT EXISTS wordpress_db; GRANT ALL PRIVILEGES ON wordpress_db.* TO '\''myuser'\''@'\''%'\''; ' > /docker-entrypoint-initdb.d/init.sql;
+        echo 'CREATE DATABASE IF NOT EXISTS joomla_db; GRANT ALL PRIVILEGES ON joomla_db.* TO '\''myuser'\''@'\''%'\''; ' >> /docker-entrypoint-initdb.d/init.sql;
+        /usr/local/bin/docker-entrypoint.sh --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+      "
+    volumes:
+      - myDB:/var/lib/mysql:z
+    ports:
+      - "3306:3306"
+
+  wordpress:
+    hostname: wordpress
+    image: wordpress:latest
+    container_name: wordpress
+    volumes:
+      - ./wordpress:/var/www/html
+    depends_on:
+      - db
+    environment:
+      - WORDPRESS_DB_HOST=db:3306
+      - WORDPRESS_DB_NAME=wordpress_db
+      - WORDPRESS_DB_USER=myuser
+      - WORDPRESS_DB_PASSWORD=test
+
+  joomla:
+    container_name: joomla
+    hostname: joomla
+    image: joomla:3.6.2-apache
+    volumes:
+      - ./joomla:/var/www/html
+    depends_on:
+      - db
+    environment:
+      - JOOMLA_DB_HOST=db:3306
+      - JOOMLA_DB_NAME=joomla_db
+      - JOOMLA_DB_USER=myuser
+      - JOOMLA_DB_PASSWORD=test
+  
+volumes:
+  myDB:

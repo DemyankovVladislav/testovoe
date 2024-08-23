@@ -1,0 +1,96 @@
+- name: Deploy LAMP stack with WordPress and Joomla
+  hosts: node
+  become: yes
+  vars:
+    web_server: "{{ web_server }}"   # 'haproxy', 'nginx' for using
+    telegram_token: ""               # Put your token
+    telegram_chat_id: ""             # Put your chat_id
+    message: "Deployment via Ansible completed successfully!"
+    web_server_user: "{{ 'www-data' if web_server == 'nginx' else 'haproxy' }}"
+    web_server_role: "{{ 'nginx' if web_server == 'nginx' else 'haproxy' }}"
+  tasks:
+    - name: "Install common packages"
+      apt:
+        name: 
+        - "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+       - wget
+       - unzip
+       - php
+       - php-mysql
+       - php-xml
+       - php-curl
+       - php-mbstring
+       - php-gd
+       - php-zip
+      tags: common
+    
+    - name: "Install Apache and necessary modules"
+      apt:
+        name:
+        - apache2
+        - libapache2-mod-php
+        state: present
+        update_cache: yes
+      tags: apache
+    
+    - name: "Configure Apache"
+      copy:
+        src: configs/ports.conf
+        dest: /etc/apache2/ports.conf
+      notify: Reload Apache
+      tags: apache
+
+    - name: "Apply Reload Apache immediately"
+      meta: flush_handlers
+      tags: apache
+
+    - name: "Enable and start Apache service"
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+      notify: Send Telegram notification
+      tags: apache
+ 
+    - name: "Include {{ web_server_role }} role"
+      include_role: name="{{ web_server_role }}"
+      tags: proxy
+
+    - name: "Include database role"
+      include_role: name=mysql
+      tags: database
+   
+    - name: "Include Wordpress deployment role"
+      include_role: name=wordpress
+      tags: wordpress
+
+    - name: "Include Joomla deployment role"
+      include_role: name=joomla
+      tags: joomla
+
+  handlers:
+    - name: Reload Apache
+      systemd_service:
+        name: apache2
+        state: reloaded
+        enabled: yes
+
+    - name: Restart {{ web_server_role }}
+      systemd_service:
+        name: "{{ web_server_role }}"
+        state: restarted
+        enabled: yes
+
+    - name: Send Telegram notification
+      uri:
+       url: "https://api.telegram.org/bot{{ telegram_token }}/sendMessage"
+       method: POST
+       body_format: form-urlencoded
+       body:
+        chat_id: "{{ telegram_chat_id }}"
+        text: "{{ message }}"
+       headers:
+        Content-Type: "application/x-www-form-urlencoded"

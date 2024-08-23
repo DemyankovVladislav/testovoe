@@ -1,0 +1,6 @@
+---
+
+- name: Reload {{ web_server_role }}
+  systemd_service:
+    name: nginx
+    state: reloaded

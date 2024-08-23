@@ -1,0 +1,34 @@
+---
+
+- name: "Install Nginx (Debian/Ubuntu)"
+  apt:
+    name: nginx
+    state: present
+  tags: proxy
+
+- name: "Copy Nginx configuration file"
+  copy:
+    src: default
+    dest: /etc/nginx/sites-available/default
+    owner: www-data
+    group: www-data
+    mode: '0644'
+  tags: proxy
+  notify: Reload {{ web_server_role }}
+  
+
+- name: "Enable Nginx site"
+  file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+    force: yes
+  tags: proxy
+  notify: Reload {{ web_server_role }}
+
+- name: "Start and enable Nginx service"
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
+  tags: proxy

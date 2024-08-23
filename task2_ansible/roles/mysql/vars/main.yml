@@ -1,0 +1,8 @@
+---
+mysql_root_password: "RootPassword123@"
+wordpress_db: "wordpress_db"
+wordpress_user: "wordpress_user"
+wordpress_password: "wp_password"
+joomla_db: "joomla_db"
+joomla_user: "joomla_user"
+joomla_password: "joomla_password"

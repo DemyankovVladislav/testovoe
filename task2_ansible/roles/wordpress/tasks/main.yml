@@ -1,0 +1,58 @@
+---
+
+- name: "Check if WordPress directory exists"
+  stat:
+    path: /var/www/html/wordpress
+  register: wordpress_dir_stat
+  tags: wordpress
+
+- name: "Download WordPress"
+  get_url:
+    url: https://wordpress.org/latest.zip
+    dest: /tmp/wordpress.zip
+  when: not wordpress_dir_stat.stat.exists
+  tags: wordpress
+
+- name: "Unzip WordPress"
+  unarchive:
+    src: /tmp/wordpress.zip
+    dest: /var/www/html/
+    copy: no
+  when: not wordpress_dir_stat.stat.exists
+  tags: wordpress
+
+- name: "Copy config.j2 to wp-config.php"
+  template:
+    src: wp-config.j2
+    dest: "{{ wordpress_config }}"
+  tags: wordpress
+
+- name: "Copy apache configuration for WordPress"
+  copy:
+    src: wordpress.conf
+    dest: "{{ wp_apache_conf}}"
+  register: wp_conf
+  tags: wordpress
+
+- name: "Enable WordPress site in Apache"
+  command: a2ensite wordpress.conf
+  when: wp_conf.changed
+  notify:
+   - Reload Apache
+   - Restart {{ web_server_role }}
+  tags: wordpress 
+
+- name: "Set permissions on WordPress directory"
+  file:
+    path: /var/www/html/wordpress
+    owner: "{{ web_server_user }}"
+    group: "{{ web_server_user }}"
+    recurse: yes
+  tags: wordpress
+
+- name: "Remove the zip file"
+  file:
+    path: /tmp/wordpress.zip
+    state: absent
+  tags: wordpress
+

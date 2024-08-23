@@ -1,0 +1,65 @@
+---
+
+- name: "Check if MySQL server is installed"
+  apt:
+    name: mysql-server
+    state: present
+  register: mysql_status
+  check_mode: yes
+  tags: database
+
+- name: "Install MySql"
+  apt:
+     name: "{{ item }}"
+     state: present
+     update_cache: yes
+  loop:
+    - mysql-server
+    - mysql-client
+    - python3-mysqldb
+    - libmysqlclient-dev
+  tags: database
+
+- name: "Start and enable MySQL"
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+  tags: database
+
+- name: "Set root user password"
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    host: localhost
+    login_user: root
+    login_password: ''
+    state: present
+  when: mysql_status.changed
+  tags: database
+
+- name: "Set up MySQL databases and users"
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+  loop:
+    - "{{ wordpress_db }}"
+    - "{{ joomla_db }}" 
+  tags: database
+
+- name: "Create MySQL users and grant privileges"
+  mysql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    priv: "{{ item.db }}.*:ALL"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+  loop:
+    - { name: "{{ wordpress_user }}", password: "{{ wordpress_password }}", db: "{{ wordpress_db }}" }
+    - { name: "{{ joomla_user }}", password: "{{ joomla_password }}", db: "{{ joomla_db }}" }
+  tags: database
+

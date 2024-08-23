@@ -1,0 +1,63 @@
+version: "3.8"
+
+networks:
+  web:
+  db:
+
+services:
+
+  joomla:
+    container_name: joomla
+    hostname: joomla
+    image: joomla:3.6.2-apache
+    environment:
+      - JOOMLA_DB_HOST=${JOOMLA_DB_HOST}
+      - JOOMLA_DB_NAME=${JOOMLA_DB_NAME}
+      - JOOMLA_DB_USER=${JOOMLA_DB_USER}
+      - JOOMLA_DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./data/joomla_code:/var/www/html
+    networks:
+      - web
+      - db
+
+  wordpress:
+    container_name: wordpress
+    hostname: wordpress
+    image: wordpress:latest
+    environment:
+      - WORDPRESS_DB_HOST=${WORDPRESS_DB_HOST}
+      - WORDPRESS_DB_NAME=${WORDPRESS_DB_NAME}
+      - WORDPRESS_DB_USER=${WORDPRESS_DB_USER}
+      - WORDPRESS_DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./data/wordpress_code:/var/www/html
+    networks:
+      - web
+      - db
+
+  mysql:
+    container_name: mysql
+    image: mysql:5.7.14
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${JOOMLA_DB_NAME}
+      - MYSQL_DATABASE=${WORDPRESS_DB_NAME}
+    volumes:
+      - ./database:/var/lib/mysql
+    networks:
+      - db
+
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./config/nginx:/etc/nginx/conf.d
+    networks:
+      - web
+    depends_on:
+      - joomla
+      - wordpress

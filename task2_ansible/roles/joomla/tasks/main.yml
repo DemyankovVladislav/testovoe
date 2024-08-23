@@ -1,0 +1,66 @@
+---
+
+- name: "Check if Joomla directory exists"
+  stat:
+    path: /var/www/html/joomla
+  register: joomla_dir_stat
+  tags: joomla
+
+- name: "Download Joomla"
+  get_url:
+    url: https://downloads.joomla.org/cms/joomla3/3-10-12/Joomla_3-10-12-Stable-Full_Package.zip
+    dest: /tmp/joomla.zip
+  when: not joomla_dir_stat.stat.exists
+  tags: joomla
+
+- name: "Сreate Joomla directory"
+  file:
+    path: /var/www/html/joomla
+    state: directory
+  when: not joomla_dir_stat.stat.exists
+  tags: joomla
+
+- name: "Unzip Joomla"
+  unarchive:
+    src: /tmp/joomla.zip
+    dest: /var/www/html/joomla
+    copy: no
+  when: not joomla_dir_stat.stat.exists
+  tags: joomla
+
+- name: "Copy configuration.j2 to VM"
+  template:
+    src: configuration.j2
+    dest: "{{ joomla_config }}"
+  when: not joomla_dir_stat.stat.exists
+  tags: joomla
+
+- name: "Copy apache configuration for Joomla"
+  copy:
+    src: joomla.conf
+    dest: "{{ joomla_apache_conf}}"
+  register: joomla_conf
+  tags: joomla
+
+- name: "Enable Joomla site in Apache"
+  command: a2ensite joomla.conf
+  when: joomla_conf.changed
+  notify:
+   - Reload Apache
+   - Restart {{ web_server_role }}
+   - Send Telegram notification
+  tags: joomla 
+
+- name: "Set permissions on Joomla directory"
+  file:
+    path: /var/www/html/joomla
+    owner: "{{ web_server_user }}"
+    group: "{{ web_server_user }}"
+    recurse: yes
+  tags: joomla
+
+- name: "Remove the zip file"
+  file:
+    path: /tmp/joomla.zip
+    state: absent
+  tags: joomla

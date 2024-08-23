@@ -1,0 +1,33 @@
+---
+
+- name: "Install HAProxy (Debian/Ubuntu)"
+  apt:
+    name: haproxy
+    state: present
+  tags: proxy
+
+- name: "Copy HAProxy configuration file"
+  copy:
+    src: haproxy.cfg
+    dest: /etc/haproxy/haproxy.cfg
+    owner: haproxy
+    group: haproxy
+    mode: '0644'
+  tags: proxy
+  notify: Reload {{ web_server_role }}
+
+- name: "Create symbolic link for HAProxy configuration"
+  file:
+    src: /etc/haproxy/haproxy.cfg
+    dest: /etc/haproxy/current.cfg
+    state: link
+    force: yes
+  tags: proxy
+  notify: Reload {{ web_server_role }}
+
+- name: "Start and enable HAProxy service"
+  systemd:
+    name: haproxy
+    enabled: yes
+    state: started
+  tags: proxy

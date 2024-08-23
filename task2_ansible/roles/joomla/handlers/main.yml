@@ -1,0 +1,8 @@
+---
+
+- name: Reload Apache
+  systemd_service:
+    name: apache2
+    state: reloaded
+    enabled: yes
+

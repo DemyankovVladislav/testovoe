@@ -1,0 +1,2 @@
+[node]
+node1 ansible_host=10.10.0.26 

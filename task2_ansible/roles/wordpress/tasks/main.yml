@@ -8,7 +8,7 @@
 
 - name: "Download WordPress"
   get_url:
-    url: https://wordpress.org/latest.zip
+    url: "{{ wordpress_url}}"
     dest: /tmp/wordpress.zip
   when: not wordpress_dir_stat.stat.exists
   tags: wordpress
@@ -40,6 +40,7 @@
   notify:
    - Reload Apache
    - Restart {{ web_server_role }}
+   - Send Telegram notification
   tags: wordpress 
 
 - name: "Set permissions on WordPress directory"

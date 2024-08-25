@@ -8,7 +8,7 @@
 
 - name: "Download Joomla"
   get_url:
-    url: https://downloads.joomla.org/cms/joomla3/3-10-12/Joomla_3-10-12-Stable-Full_Package.zip
+    url: "{{ joomla_url }}"
     dest: /tmp/joomla.zip
   when: not joomla_dir_stat.stat.exists
   tags: joomla

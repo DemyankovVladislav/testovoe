@@ -39,7 +39,7 @@
   when: mysql_status.changed
   tags: database
 
-- name: "Set up MySQL databases and users"
+- name: "Set up MySQL databases"
   mysql_db:
     name: "{{ item }}"
     state: present
@@ -58,6 +58,7 @@
     state: present
     login_user: root
     login_password: "{{ mysql_root_password }}"
+  no_log: True
   loop:
     - { name: "{{ wordpress_user }}", password: "{{ wordpress_password }}", db: "{{ wordpress_db }}" }
     - { name: "{{ joomla_user }}", password: "{{ joomla_password }}", db: "{{ joomla_db }}" }

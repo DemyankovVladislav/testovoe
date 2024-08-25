@@ -41,6 +41,7 @@ function check_root() {
 }
 
 function install_packages() {
+    touch $STATE_FILE
     if grep -q "install_packages" $STATE_FILE; then
         echo "Packages already installed, skipping..." | tee -a $LOGFILE
         return
@@ -115,11 +116,12 @@ function deploy_wordpress() {
 
     local WORDPRESS_CONFIG="/var/www/html/wordpress/wp-config.php"
     local APACHE_CONF_DIR="/etc/apache2/sites-available"
+    local WORDPRESS_ARCHIVE="wordpress.zip"
 
     echo "Deploying WordPress..." | tee -a $LOGFILE
-    wget https://wordpress.org/latest.zip | tee -a $LOGFILE
-    unzip -o latest.zip -d /var/www/html/ | tee -a $LOGFILE
-    rm latest.zip | tee -a $LOGFILE
+    wget -O $WORDPRESS_ARCHIVE $WORDPRESS_URL | tee -a $LOGFILE
+    unzip -o $WORDPRESS_ARCHIVE -d /var/www/html/ | tee -a $LOGFILE
+    rm $WORDPRESS_ARCHIVE | tee -a $LOGFILE
 
     cp /var/www/html/wordpress/wp-config-sample.php $WORDPRESS_CONFIG | tee -a $LOGFILE
     sed -i "s/database_name_here/$WORDPRESS_DB/" $WORDPRESS_CONFIG | tee -a $LOGFILE
@@ -144,13 +146,14 @@ function deploy_joomla() {
 
     local JOOMLA_CONFIG="/var/www/html/joomla/installation/configuration.php"
     local APACHE_CONF_DIR="/etc/apache2/sites-available"
+    local JOOMLA_ARCHIVE="joomla.zip"
 
     echo "Deploying Joomla..." | tee -a $LOGFILE
-    wget https://downloads.joomla.org/cms/joomla3/3-10-12/Joomla_3-10-12-Stable-Full_Package.zip | tee -a $LOGFILE
-    unzip -o Joomla_3-10-12-Stable-Full_Package.zip -d /var/www/html/joomla | tee -a $LOGFILE
-    rm Joomla_3-10-12-Stable-Full_Package.zip | tee -a $LOGFILE
-    cp /var/www/html/joomla/installation/configuration.php-dist $JOOMLA_CONFIG | tee -a $LOGFILE
+    wget -O $JOOMLA_ARCHIVE $JOOMLA_URL | tee -a $LOGFILE
+    unzip -o $JOOMLA_ARCHIVE -d /var/www/html/joomla | tee -a $LOGFILE
+    rm $JOOMLA_ARCHIVE | tee -a $LOGFILE
 
+    cp /var/www/html/joomla/installation/configuration.php-dist $JOOMLA_CONFIG | tee -a $LOGFILE
     sed -i "s/public \$user = ''/public \$user = '$JOOMLA_USER'/" $JOOMLA_CONFIG | tee -a $LOGFILE
     sed -i "s/public \$password = ''/public \$password = '$JOOMLA_PASSWORD'/" $JOOMLA_CONFIG | tee -a $LOGFILE
     sed -i "s/public \$db = ''/public \$db = '$JOOMLA_DB'/" $JOOMLA_CONFIG | tee -a $LOGFILE

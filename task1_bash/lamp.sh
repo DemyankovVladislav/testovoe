@@ -5,11 +5,30 @@ STATE_FILE="/var/log/deployment_state.txt"
 LOCKFILE="/var/lock/deployment.lock"
 ALL_STEPS_EXECUTED=true
 
+function load_env() {
+    if [ -f .env ]; then
+      set -a
+      source .env
+      set +a
+    else
+        echo ".env file not found. Please create it with the following variables:"
+        echo "MYSQL_ROOT_PASSWORD, WORDPRESS_DB, WORDPRESS_USER, WORDPRESS_PASSWORD, JOOMLA_DB, JOOMLA_USER, JOOMLA_PASSWORD, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID"
+        exit 1
+    fi
+}
+
+function check_lockfile() {
+    exec 200>$LOCKFILE
+    if ! flock -n 200; then
+        echo "This script is already running" | tee -a $LOGFILE
+        exit 1
+    fi
+}
+
+
 function send_telegram_message() {
     local message=$1
-    local TOKEN=""      
-    local CHAT_ID=""
-    curl -s -X POST https://api.telegram.org/bot$TOKEN/sendMessage -d chat_id=$CHAT_ID -d text="$message" > /dev/null
+    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage -d chat_id=$TELEGRAM_CHAT_ID -d text="$message" > /dev/null
 }
 
 function check_root() {
@@ -58,14 +77,6 @@ function setup_mysql_databases() {
         return
     fi
 
-    local MYSQL_ROOT_PASSWORD="RootPassword123"
-    local WORDPRESS_DB="wordpress_db"
-    local WORDPRESS_USER="wordpress_user"
-    local WORDPRESS_PASSWORD="wp_password"
-    local JOOMLA_DB="joomla_db"
-    local JOOMLA_USER="joomla_user"
-    local JOOMLA_PASSWORD="joomla_password"
-
     echo "Setting up MySQL databases..." | tee -a $LOGFILE
     mysql -u root -p$MYSQL_ROOT_PASSWORD <<MYSQL_SCRIPT | tee -a $LOGFILE
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASSWORD';
@@ -98,12 +109,10 @@ function configure_web_servers() {
 function deploy_wordpress() {
     if grep -q "deploy_wordpress" $STATE_FILE; then
         echo "WordPress already deployed, skipping..." | tee -a $LOGFILE
+        ALL_STEPS_EXECUTED=false
         return
     fi
 
-    local WORDPRESS_DB="wordpress_db"
-    local WORDPRESS_USER="wordpress_user"
-    local WORDPRESS_PASSWORD="wp_password"
     local WORDPRESS_CONFIG="/var/www/html/wordpress/wp-config.php"
     local APACHE_CONF_DIR="/etc/apache2/sites-available"
 
@@ -133,9 +142,6 @@ function deploy_joomla() {
         return
     fi
 
-    local JOOMLA_DB="joomla_db"
-    local JOOMLA_USER="joomla_user"
-    local JOOMLA_PASSWORD="joomla_password"
     local JOOMLA_CONFIG="/var/www/html/joomla/installation/configuration.php"
     local APACHE_CONF_DIR="/etc/apache2/sites-available"
 
@@ -172,8 +178,12 @@ function start_services() {
 }
 
 function send_notification() {
-    local message=$1
-    send_telegram_message "$message"
+    if [ "$ALL_STEPS_EXECUTED" = true ] && [ "$(wc -l < "$STATE_FILE")" -eq 7 ]; then
+      local message="Deployment completed successfully!"
+      curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage -d chat_id=$TELEGRAM_CHAT_ID -d text="$message" > /dev/null
+    else
+      echo "Notification not sent: some steps were skipped" | tee -a $LOGFILE
+    fi
 }
 
 function main() {
@@ -181,11 +191,8 @@ function main() {
     set -o nounset
     set -o pipefail
     check_root 
-    exec 200>$LOCKFILE
-    if ! flock -n 200; then
-      echo "This script is already running" | tee -a $LOGFILE
-      exit 1
-    fi
+    load_env
+    check_lockfile
     install_packages  
     secure_mysql
     setup_mysql_databases 
@@ -193,11 +200,7 @@ function main() {
     deploy_wordpress 
     deploy_joomla 
     start_services  
-    if [ "$ALL_STEPS_EXECUTED" = true ] && [ "$(wc -l < "$STATE_FILE")" -eq 7 ]; then
-      send_notification "Deployment completed successfully!"
-    else
-      echo "Notification not sent: some steps were skipped" | tee -a $LOGFILE
-    fi
+    send_notification
 }
 
 main

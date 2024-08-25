@@ -1,4 +1,5 @@
 ---
+
 joomla_db: "joomla_db"
 joomla_user: "joomla_user"
 joomla_password: "joomla_password"

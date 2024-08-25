@@ -32,8 +32,8 @@ function send_telegram_message() {
 }
 
 function check_root() {
-    echo "Error: Script must be run via sudo." | tee -a $LOGFILE 2>/dev/null
     if [ "$EUID" -ne 0 ]; then
+        echo "Script must be run via sudo." | tee -a $LOGFILE 2>/dev/null
         exit 1
     fi
 }

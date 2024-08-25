@@ -29,8 +29,6 @@ services:
       "
     volumes:
       - myDB:/var/lib/mysql:z
-    ports:
-      - "3306:3306"
 
   wordpress:
     hostname: wordpress

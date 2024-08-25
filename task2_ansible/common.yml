@@ -36,10 +36,21 @@
         update_cache: yes
       tags: apache
     
-    - name: "Configure Apache"
-      copy:
-        src: configs/ports.conf
-        dest: /etc/apache2/ports.conf
+    - name: "Replace Listen 80 with Listen 8080 in ports.conf"
+      replace:
+        path: /etc/apache2/ports.conf
+        regexp: '^Listen 80$'
+        replace: 'Listen 8080'
+      when: "'Listen 80' in lookup('file', '/etc/apache2/ports.conf')"
+      notify: Reload Apache
+      tags: apache
+
+    - name: "Ensure Listen 8081 is present in ports.conf"
+      lineinfile:
+        path: /etc/apache2/ports.conf
+        line: 'Listen 8081'
+        state: present
+        insertafter: '^Listen 8080$'
       notify: Reload Apache
       tags: apache
 
